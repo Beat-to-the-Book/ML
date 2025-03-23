@@ -1,0 +1,11 @@
+flask
+flask_sqlalchemy
+flask_cors
+flask_redis
+kafka-python
+pymysql
+pandas
+scikit-surprise
+scikit-learn
+numpy
+requests
