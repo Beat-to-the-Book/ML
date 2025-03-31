@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 import requests
-from app.services.recommend_cache_service import get_cached_recommendations, cache_recommendations
+from app.services.recommend_cache import get_cached_recommendations, cache_recommendations
 from app.config import Config
 
 recommend_bp = Blueprint("recommend", __name__)
