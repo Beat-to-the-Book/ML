@@ -1,6 +1,10 @@
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 # 도서 데이터 로드
 books_data = pd.read_csv("data/books.csv") # title, author, genre 컬럼이 포함된 CSV 파일

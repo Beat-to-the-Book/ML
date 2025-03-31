@@ -3,6 +3,7 @@ import json
 from app.services.recommend_service import get_similar_books
 from app.services.recommend_cache_service import cache_recommendations
 from app.config import Config
+from app.logger_config import setup_logger
 
 consumer = KafkaConsumer(
     'recommendation_topic',
