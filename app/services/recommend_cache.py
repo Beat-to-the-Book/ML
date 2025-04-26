@@ -9,6 +9,10 @@ def get_cached_recommendations(user_id):
     cached_data = redis_client.get(f"recommend:user:{user_id}")
     return json.loads(cached_data) if cached_data else None
 
-def cache_recommendations(user_id, recommendations):
+def cache_recommendations(user_id, recommendations, expiration=600):
     """추천 데이터를 Redis에 캐싱"""
-    redis_client.set(f"recommend:user:{user_id}", json.dumps(recommendations), ex=Config.CACHE_EXPIRE)
+    redis_client.set(
+        f"recommend:user:{user_id}",
+        json.dumps(recommendations),
+        ex=expiration
+    )
