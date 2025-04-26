@@ -1,26 +1,31 @@
 from flask import Blueprint, jsonify, request
-import requests
 from app.services.recommend_cache import get_cached_recommendations, cache_recommendations
-from app.config import Config
+from app.services.recommend_service import get_combined_recommendations
+from app.services.book_pool_cache import book_pool_cache
 
 recommend_bp = Blueprint("recommend", __name__)
 
-@recommend_bp.route("/<int:user_id>", methods=["GET"])
-def get_recommendations(user_id):
-    # Redis에서 추천 결과 확인
-    recommendations = get_cached_recommendations(user_id)
-    if recommendations:
-        return jsonify(recommendations)
+@recommend_bp.route("/", methods=["POST"])
+def post_recommendations():
+    data = request.get_json()
+    user_id = data.get("userId")
+    read_books = data.get("readBooks", [])
+    user_behavior = data.get("behavior", [])
 
-    # Spring Boot에 추천 요청 보내기
-    try:
-        response = requests.get(f"{Config.SPRING_BOOT_API}/recommend/{user_id}")
-        response.raise_for_status()
-        recommendations = response.json()
+    if not user_id or not read_books or not user_behavior:
+        return jsonify({"error": "userId, readBooks, behavior 모두 필수입니다"}), 400
 
-        # Redis에  결과 캐싱 (예: 10분)
-        cache_recommendations(user_id, recommendations, expiration=600)
+    recommendations = get_combined_recommendations(
+        read_books,
+        user_behavior,
+        book_pool_cache,
+        alpha=0.5
+    )
 
-        return jsonify(recommendations)
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+    result = {
+        "userId": user_id,
+        "recommendedBooks": recommendations
+    }
+
+    cache_recommendations(user_id, result)
+    return jsonify(result)
