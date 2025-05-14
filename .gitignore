@@ -1,0 +1,61 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyCharm 설정 파일
+.idea/
+
+# VSCode 설정 (사용하는 경우)
+.vscode/
+
+# 환경 파일
+.env
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook 체크포인트
+.ipynb_checkpoints
+
+# 파이썬 가상환경
+*.env
+*.venv
+*.virtualenv
+
+# pytest 캐시
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# 기타
+.DS_Store
+*.log
+*.sqlite3
