@@ -7,10 +7,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_combined_recommendations(read_books, user_behavior, book_pool_cache, alpha=0.5):
-    if not read_books or book_pool_cache is None:
-        logger.warning("입력 데이터 없음 (read_books 또는 book_pool_cache)")
+    # 캐시 객체가 없으면 종료
+    if book_pool_cache is None:
+        logger.warning("book_pool_cache 없음")
         return []
 
+    # DB에서 도서 풀 가져오기
     book_pool = book_pool_cache.get_book_pool()
     if not book_pool:
         logger.warning("DB에 도서가 없음")
@@ -18,85 +20,80 @@ def get_combined_recommendations(read_books, user_behavior, book_pool_cache, alp
 
     logger.info(f"가져온 book_pool 개수: {len(book_pool)}")
 
+    # 도서 목록을 DataFrame으로 변환
     pool_df = pd.DataFrame(book_pool)
     pool_df['text'] = pool_df['author'].fillna('') + " " + pool_df['genre'].fillna('')
 
-    # 읽은 책 제외
-    read_ids = {entry.get("bookId") for entry in read_books}
-    logger.info(f"제외할 책 id 목록 (읽은 책 id 전부): {read_ids}")
-
+    # 이미 읽은 책은 제외
+    read_ids = {entry.get("bookId") for entry in (read_books or [])}
     pool_df = pool_df[~pool_df["id"].isin(read_ids)]
     logger.info(f"읽은 책 제외 후 남은 pool_df 크기: {len(pool_df)}")
 
     if pool_df.empty:
-        logger.warning("읽은 책 제외하고 남은 책이 없음")
+        logger.warning("읽은 책 제외 후 남은 책이 없음")
         return []
 
-    # TF-IDF 벡터화
+    # 전체 도서에 대해 TF-IDF 벡터 생성
     vectorizer = TfidfVectorizer()
     pool_vectors = vectorizer.fit_transform(pool_df['text'])
 
-    # 콘텐츠 기반 유사도
-    content_texts = [
-        f"{book.get('author', '')} {book.get('genre', '')}" for book in read_books
-    ]
-    if not content_texts:
-        logger.warning("content_texts 비어 있음")
-        return []
-
-    content_vectors = vectorizer.transform(content_texts)
-    content_mean_vector = np.asarray(content_vectors.mean(axis=0)).reshape(1, -1)
-    content_similarities = cosine_similarity(content_mean_vector, pool_vectors).flatten()
-
-    logger.info(f"content_similarities 통계 - min: {content_similarities.min()}, max: {content_similarities.max()}, mean: {content_similarities.mean()}")
-
-    # 행동 기반 유사도
-    input_texts = []
-    weights = []
-
-    # read_books를 bookId로 빠르게 조회할 수 있도록 변환
-    read_books_dict = {book['bookId']: book for book in read_books}
-
-    for entry in user_behavior:
-        book_id = entry.get("bookId")
-        click = entry.get("clickCount", 0)
-        stay = entry.get("stayTime", 0)
-
-        book = read_books_dict.get(book_id)
-        if not book:
-            logger.warning(f"행동 데이터에 있지만 읽은 책 목록에 없는 bookId={book_id}")
-            continue
-
-        text = f"{book.get('author', '')} {book.get('genre', '')}"
-        input_texts.append(text)
-        weights.append(click + stay / 30)
-
-    if not input_texts:
-        logger.warning("input_texts 비어 있음 (행동 기반 추천 불가)")
-        behavior_similarities = np.zeros_like(content_similarities)
+    # 콘텐츠 기반 유사도 계산
+    content_similarities = np.zeros(pool_vectors.shape[0])
+    if read_books:
+        content_texts = [
+            f"{book.get('author', '')} {book.get('genre', '')}" for book in read_books
+        ]
+        content_vectors = vectorizer.transform(content_texts)
+        content_mean_vector = np.asarray(content_vectors.mean(axis=0)).reshape(1, -1)
+        content_similarities = cosine_similarity(content_mean_vector, pool_vectors).flatten()
+        logger.info(f"content_similarities 통계 - min: {content_similarities.min()}, max: {content_similarities.max()}, mean: {content_similarities.mean()}")
     else:
-        behavior_vectors = vectorizer.transform(input_texts)
-        weights = np.array(weights)
-        weights = weights / weights.sum()
-        weighted_behavior_vector = np.average(behavior_vectors.toarray(), axis=0, weights=weights)
-        behavior_similarities = cosine_similarity([weighted_behavior_vector], pool_vectors).flatten()
+        logger.info("read_books 비어 있음 - 콘텐츠 기반 유사도 미사용")
 
-    logger.info(f"behavior_similarities 통계 - min: {behavior_similarities.min()}, max: {behavior_similarities.max()}, mean: {behavior_similarities.mean()}")
+    # 행동 기반 유사도 계산
+    behavior_similarities = np.zeros(pool_vectors.shape[0])
+    if user_behavior:
+        input_texts = []
+        weights = []
 
-    # 최종 결합
-    combined_similarities = alpha * content_similarities + (1 - alpha) * behavior_similarities
-    top_indices = combined_similarities.argsort()[-5:][::-1]
+        # 행동 데이터에 있는 bookId에 대한 정보 가져오기
+        read_books_dict = {book['bookId']: book for book in read_books or []}
 
-    logger.info(f"최종 combined_similarities 상위 5개 점수: {combined_similarities[top_indices]}")
+        for entry in user_behavior:
+            book_id = entry.get("bookId")
+            click = entry.get("clickCount", 0)
+            stay = entry.get("stayTime", 0)
 
-    if len(top_indices) == 0:
-        logger.warning("추천 결과 없음 - top_indices 비어 있음")
-        return []
+            # 행동 데이터 기반 텍스트 생성 (없으면 공백)
+            book = read_books_dict.get(book_id, {"author": "", "genre": ""})
+            text = f"{book.get('author', '')} {book.get('genre', '')}"
+            input_texts.append(text)
+            weights.append(click + stay / 30)
 
-    top_books = pool_df.iloc[top_indices][['id', 'title', 'author', 'frontCoverImageUrl']]
-    logger.info(f"추천된 top_books: {top_books.to_dict(orient='records')}")
+        # 행동 기반 유사도 벡터 계산
+        if input_texts:
+            behavior_vectors = vectorizer.transform(input_texts)
+            weights = np.array(weights)
+            weights = weights / weights.sum()
+            weighted_behavior_vector = np.average(behavior_vectors.toarray(), axis=0, weights=weights)
+            behavior_similarities = cosine_similarity([weighted_behavior_vector], pool_vectors).flatten()
+            logger.info(f"behavior_similarities 통계 - min: {behavior_similarities.min()}, max: {behavior_similarities.max()}, mean: {behavior_similarities.mean()}")
+        else:
+            logger.info("user_behavior 있음. 그러나 input_texts 없음")
 
-    # bookId를 다시 맞춰주기
+    # 추천 결과 추출 방식 선택
+    if not read_books and not user_behavior:
+        # 아무 정보도 없으면 랜덤 추천
+        logger.info("read_books와 user_behavior 모두 없음 - 랜덤 추천")
+        top_books = pool_df.sample(n=min(5, len(pool_df)))
+    else:
+        # 콘텐츠/행동 기반 유사도 결합
+        combined_similarities = alpha * content_similarities + (1 - alpha) * behavior_similarities
+        top_indices = combined_similarities.argsort()[-5:][::-1]
+        logger.info(f"최종 combined_similarities 상위 5개 점수: {combined_similarities[top_indices]}")
+        top_books = pool_df.iloc[top_indices]
+
+    # 추천 결과 포맷 구성
     results = []
     for _, row in top_books.iterrows():
         results.append({
@@ -106,4 +103,5 @@ def get_combined_recommendations(read_books, user_behavior, book_pool_cache, alp
             "coverImageUrl": row['frontCoverImageUrl']
         })
 
+    logger.info(f"추천된 top_books: {results}")
     return results
