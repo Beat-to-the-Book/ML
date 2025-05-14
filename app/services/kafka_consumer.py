@@ -54,7 +54,6 @@ with app.app_context():
 
             if not read_books:
                 logger.warning(f"읽은 책 목록이 비어 있음: userId={user_id}")
-                continue
 
             # 추천 도서 처리
             recommended_books = get_combined_recommendations(read_books, behavior, book_pool_cache)
