@@ -2,10 +2,10 @@ from kafka import KafkaConsumer
 import json
 from app import create_app, db
 from app.models.book import Book
-from app.services.book_pool_cache import BookPoolCache, book_pool_cache as global_cache
+from app.services.book_pool_cache import BookPoolCache
 from app.services.recommend_service import get_combined_recommendations
 from app.services.recommend_cache import cache_recommendations
-from app.services.kafka_producer import send_recommendations_to_kafka
+from app.util.kafka.kafka_producer import send_recommendations_to_kafka
 from app.config import Config
 from app.logger_config import setup_logger
 
