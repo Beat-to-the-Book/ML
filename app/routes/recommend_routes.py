@@ -11,7 +11,6 @@ def post_recommendations():
     data = request.get_json()
     user_id = data.get("userId")
     read_books = data.get("readBooks", [])
-    user_behavior = data.get("behavior", [])
     user_behavior = data.get("userBehaviors", [])
 
     if not user_id or not read_books or not user_behavior:
