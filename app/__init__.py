@@ -1,9 +1,7 @@
 from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
 from app.routes.recommend_routes import recommend_bp
-from app.config import Config
-import logging
-from app.logger_config import setup_logger
+from app.core.config import Config
+from app.core.logger import setup_logger
 from app.core.extensions import db
 
 logger = setup_logger()

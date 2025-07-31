@@ -1,6 +1,6 @@
 from redis import Redis
 import json
-from app.config import Config
+from app.core.config import Config
 
 redis_client = Redis(host=Config.REDIS_HOST, port=Config.REDIS_PORT, decode_responses=True)
 
