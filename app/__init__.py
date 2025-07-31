@@ -18,16 +18,6 @@ def create_app():
     # Flask 기본 logger 수준 설정
     app.logger.setLevel(logger.level)
 
-    # 순환 참조 방지 import
-    from app.models.book import Book
-    from app.services.book_pool_cache import BookPoolCache, book_pool_cache
-
-    # BookPoolCache 전역 객체 초기화
-    with app.app_context():
-        book_pool_cache = BookPoolCache(db.session, Book)
-        logger.info("BookPoolCache 초기화 완료")
-
-    # 상태 확인용 엔드포인트
     @app.route("/")
     def root_health():
         return jsonify({"status": "OK"}), 200

@@ -4,6 +4,7 @@ from app import create_app, db
 from app.models.book import Book
 from app.services.book_pool_cache import BookPoolCache
 from app.services.recommend_service import get_combined_recommendations
+from app.repositories.book_repository import BookPoolRepository
 from app.services.recommend_cache import cache_recommendations
 from app.util.kafka.kafka_producer import send_recommendations_to_kafka
 from app.config import Config
@@ -26,6 +27,8 @@ with app.app_context():
     # BookPoolCache 전역 객체 초기화
     book_pool_cache = BookPoolCache(db.session, Book)
     logger.info("[초기화] BookPoolCache 전역 객체 설정 완료")
+    # 객체 초기화
+    book_repository = BookPoolRepository(db_session, Book, redis_client)
 
     for message in consumer:
         try:

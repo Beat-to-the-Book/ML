@@ -2,12 +2,15 @@ from flask import Blueprint, jsonify, request
 from app.services.recommend_cache import get_cached_recommendations, cache_recommendations
 from app.services.recommend_service import get_combined_recommendations
 from app.services.book_pool_cache import book_pool_cache
+from app.repositories.book_repository import BookPoolRepository
 from time import time
 import logging
 
 recommend_bp = Blueprint("recommend", __name__)
 logger = logging.getLogger(__name__)
 
+# --- 전역 객체 초기화 ---
+book_repository = BookPoolRepository(db_session=db_session, book_model=Book, redis_client=redis_client)
 @recommend_bp.route("/", methods=["POST"])
 def post_recommendations():
     data = request.get_json()
