@@ -4,8 +4,8 @@ from app.routes.recommend_routes import recommend_bp
 from app.config import Config
 import logging
 from app.logger_config import setup_logger
+from app.core.extensions import db
 
-db = SQLAlchemy()
 logger = setup_logger()
 
 def create_app():

@@ -1,4 +1,4 @@
-from app import db
+from app.core.extensions import db
 
 class Book(db.Model):
     __tablename__ = 'books'
