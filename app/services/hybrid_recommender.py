@@ -6,12 +6,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# TF-IDF - 추천 연산 소요 시간: 0.02s
 class HybridRecommender:
     def __init__(self, book_repository, alpha=0.5):
         self.book_repository = book_repository
         self.alpha = alpha
 
-    def get_recommendations(self, read_books, user_behavior):
+    def get_hybrid_recommendations(self, read_books, user_behavior):
         if self.book_repository is None:
             logger.warning("[HybridRecommender] book_repository 없음")
             return []
