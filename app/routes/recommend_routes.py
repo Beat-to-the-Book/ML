@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
-from app.services.recommend_cache import cache_recommendations
-from app.services.hybrid_recommender import HybridRecommender
+from app.infra.cache.redis_cache import set_cache
+from app.services.semantic_hybrid_recommender import SemanticHybridRecommender
 from app.repositories.book_repository import BookPoolRepository
 from app.core.dependencies import db_session, redis_client
 from app.models.book import Book
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # --- 전역 객체 초기화 ---
 book_repository = BookPoolRepository(db_session=db_session, book_model=Book, redis_client=redis_client)
-recommender = HybridRecommender(book_repository=book_repository)
+recommender = SemanticHybridRecommender(book_repository=book_repository)
 
 @recommend_bp.route("/", methods=["POST"])
 def post_recommendations():
@@ -25,14 +25,14 @@ def post_recommendations():
     if not user_id or not read_books or not user_behavior:
         return jsonify({"error": "userId, readBooks, behavior 모두 필수입니다"}), 400
 
-    recommendations = recommender.get_recommendations(read_books, user_behavior)
+    recommendations = recommender.get_semantic_hybrid_recommendations(read_books, user_behavior)
 
     result = {
         "userId": user_id,
         "recommendedBooks": recommendations
     }
 
-    cache_recommendations(user_id, result)
+    set_cache(redis_client, f"recommend:user:{user_id}", result)
 
     flask_end = time() * 1000
     if start_time:

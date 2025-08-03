@@ -4,7 +4,7 @@ from app import create_app
 from app.core.dependencies import db_session, redis_client
 from app.models.book import Book
 from app.repositories.book_repository import BookPoolRepository
-from app.services.hybrid_recommender import HybridRecommender
+from app.services.semantic_hybrid_recommender import SemanticHybridRecommender
 from app.infra.kafka.kafka_producer import send_recommendations_to_kafka
 from app.core.config import Config
 from app.core.logger import setup_logger
@@ -27,7 +27,7 @@ def main():
     with app.app_context():
         # 객체 초기화
         book_repository = BookPoolRepository(db_session, Book, redis_client)
-        recommender = HybridRecommender(book_repository)
+        recommender = SemanticHybridRecommender(book_repository)
 
         logger.info("[KafkaConsumer] 추천 시스템 준비 완료")
 
@@ -50,7 +50,7 @@ def handle(message, recommender):
 
         # 추천 연산
         start_time = time()
-        recommendations = recommender.get_hybrid_recommendations(read_books, behavior)
+        recommendations = recommender.get_semantic_hybrid_recommendations(read_books, behavior)
         logger.info(f"[Kafka] 추천 연산 소요 시간: {round(time() - start_time, 2)}초")
 
         if recommendations:
