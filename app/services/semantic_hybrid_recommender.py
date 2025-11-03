@@ -19,14 +19,14 @@ class SemanticHybridRecommender:
             logger.warning("[SemanticHybridRecommender] book_repository 없음")
             return []
 
+        # Redis 캐시된 book_pool 사용
         book_pool = self.book_repository.get_book_pool()
         if not book_pool:
             logger.warning("[SemanticHybridRecommender] 도서 풀이 비어 있음")
             return []
-
         pool_df = pd.DataFrame(book_pool)
-        pool_df['text'] = pool_df['author'].fillna('') + " " + pool_df['genre'].fillna('')
 
+        # 읽은 책 제외
         read_ids = {entry.get("bookId") for entry in (read_books or [])}
         pool_df = pool_df[~pool_df["id"].isin(read_ids)]
         logger.info(f"[SemanticHybridRecommender] 읽은 책 제외 후 {len(pool_df)}권 남음")
@@ -34,6 +34,8 @@ class SemanticHybridRecommender:
         if pool_df.empty:
             logger.warning("[SemanticHybridRecommender] 추천할 책이 없음")
             return []
+
+        pool_df['text'] = pool_df['author'].fillna('') + " " + pool_df['genre'].fillna('')
 
         # 도서 풀 임베딩
         pool_texts = pool_df["text"].tolist()
