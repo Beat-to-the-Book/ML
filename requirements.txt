@@ -11,3 +11,7 @@ numpy
 requests
 pymysql
 sentence-transformers
+xgboost
+joblib
+seaborn
+matplotlib
