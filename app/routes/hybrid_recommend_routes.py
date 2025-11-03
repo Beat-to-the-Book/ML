@@ -1,9 +1,9 @@
 from flask import Blueprint, jsonify, request
 from app.infra.cache.redis_cache import set_cache
-from app.services.semantic_hybrid_recommender import SemanticHybridRecommender
+from app.models.book import Book
 from app.repositories.book_repository import BookPoolRepository
 from app.core.dependencies import db_session, redis_client
-from app.models.book import Book
+from app.services.semantic_hybrid_recommender import SemanticHybridRecommender
 import logging
 from time import time
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 book_repository = BookPoolRepository(db_session=db_session, book_model=Book, redis_client=redis_client)
 recommender = SemanticHybridRecommender(book_repository=book_repository)
 
-@recommend_bp.route("/", methods=["POST"])
+@recommend_bp.route("/hybrid", methods=["POST"])
 def post_recommendations():
     data = request.get_json()
     user_id = data.get("userId")
