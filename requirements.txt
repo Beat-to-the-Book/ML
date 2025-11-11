@@ -15,3 +15,4 @@ xgboost
 joblib
 seaborn
 matplotlib
+openai
