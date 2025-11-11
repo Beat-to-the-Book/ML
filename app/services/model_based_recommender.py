@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ModelBasedRecommender:
-    def __init__(self, book_repository, model_path=None):
+    def __init__(self, book_repository):
         base_dir = os.path.dirname(os.path.abspath(__file__))  # /app/app/services
         model_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'data', 'xgb_model.pkl'))
         self.book_repository = book_repository
