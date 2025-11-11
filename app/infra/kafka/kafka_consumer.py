@@ -29,14 +29,14 @@ def main():
     with app.app_context():
         # 객체 초기화
         book_repository = BookPoolRepository(db_session, Book, redis_client)
-        recommender = ModelBasedRecommender(book_repository, model_path="xgb_model.pkl")
+        model_recommender = ModelBasedRecommender(book_repository)
 
         logger.info("[KafkaConsumer] 추천 시스템 준비 완료")
 
         for message in consumer:
-            handle(message.value, recommender)
+            handle(message.value, model_recommender)
 
-def handle(message, recommender):
+def handle(message, model_recommender):
     try:
         # 메시지 값 json 파싱
         data = json.loads(message)
@@ -56,15 +56,24 @@ def handle(message, recommender):
 
         # 추천 연산
         start_time = time()
-        recommendations = recommender.get_model_based_recommendations(read_books, user_behaviors)
+        recommendations = model_recommender.get_model_based_recommendations(read_books, user_behaviors)
         logger.info(f"[Kafka] 추천 연산 완료: {round(time() - start_time, 2)}초")
 
+        # 추천 결과 캐시
         if recommendations:
             logger.info(f"[Kafka] 추천 완료 - 추천 수={len(recommendations)}")
             send_recommendations_to_kafka(user_id, recommendations)
             set_cache(redis_client, f"recommend:model:user:{user_id}", {"recommendedBooks": recommendations})
         else:
             logger.warning(f"[Kafka] 추천 결과 없음 - userId={user_id}")
+
+        # 사용자 데이터 캐시
+        context_data = {
+            "readBooks": read_books,
+            "userBehaviors": user_behaviors
+        }
+
+        set_cache(redis_client, f"user_context:{user_id}", context_data)
 
     except Exception as e:
         logger.error(f"[Kafka] 처리 중 예외 발생: {e}", exc_info=True)
