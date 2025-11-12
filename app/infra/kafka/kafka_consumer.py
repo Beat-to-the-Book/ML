@@ -10,6 +10,7 @@ from app.infra.cache.redis_cache import set_cache
 from app.core.config import Config
 from app.core.logger import setup_logger
 from app.utils.generate_training_dataset import append_training_row
+from app.utils.generate_reason import generate_reason
 from time import time, sleep
 
 logger = setup_logger()
@@ -40,6 +41,7 @@ def handle(message, model_recommender):
     try:
         # 메시지 값 json 파싱
         data = json.loads(message)
+        logger.info("[FLASK] /recommend/reason 요청 수신: %s", data)
 
         user_id = data.get("userId")
         if not user_id:
@@ -61,19 +63,29 @@ def handle(message, model_recommender):
 
         # 추천 결과 캐시
         if recommendations:
-            logger.info(f"[Kafka] 추천 완료 - 추천 수={len(recommendations)}")
             send_recommendations_to_kafka(user_id, recommendations)
             set_cache(redis_client, f"recommend:model:user:{user_id}", {"recommendedBooks": recommendations})
+
+            # 사용자 행동 캐시 저장
+            context_data = {"readBooks": read_books, "userBehaviors": user_behaviors}
+            set_cache(redis_client, f"user_context:{user_id}", context_data)
+
+            # 추천 이유(reason) 생성 및 Redis 저장
+            reasons = []
+            for book in recommendations:
+                reason = generate_reason(read_books, user_behaviors, book["title"], book["score"])
+                reasons.append({
+                    "bookId": book["bookId"],
+                    "title": book["title"],
+                    "author": book["author"],
+                    "coverImageUrl": book["coverImageUrl"],
+                    "reason": reason
+                })
+            set_cache(redis_client, f"reason:model:user:{user_id}", {"booksWithReason": reasons})
+
+            logger.info(f"[Kafka] 추천 이유 저장 완료 - userId={user_id}, count={len(reasons)}")
         else:
             logger.warning(f"[Kafka] 추천 결과 없음 - userId={user_id}")
-
-        # 사용자 데이터 캐시
-        context_data = {
-            "readBooks": read_books,
-            "userBehaviors": user_behaviors
-        }
-
-        set_cache(redis_client, f"user_context:{user_id}", context_data)
 
     except Exception as e:
         logger.error(f"[Kafka] 처리 중 예외 발생: {e}", exc_info=True)
